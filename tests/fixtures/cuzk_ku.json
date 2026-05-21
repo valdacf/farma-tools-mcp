@@ -1,0 +1,1 @@
+{"displayFieldName":"nazev","fieldAliases":{"nazev":"Název katastrálního území","obec":"Nadřazená obec"},"fields":[{"name":"nazev","type":"esriFieldTypeString","alias":"Název katastrálního území","length":48},{"name":"obec","type":"esriFieldTypeInteger","alias":"Nadřazená obec"}],"features":[{"attributes":{"nazev":"Staré Město","obec":554782}}]}

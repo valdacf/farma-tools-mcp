@@ -1,0 +1,1 @@
+{"displayFieldName":"nazev","fieldAliases":{"nazev":"Název obce"},"fields":[{"name":"nazev","type":"esriFieldTypeString","alias":"Název obce","length":48}],"features":[{"attributes":{"nazev":"Praha"}}]}

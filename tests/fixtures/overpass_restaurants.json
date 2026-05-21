@@ -1,0 +1,132 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API 0.7.62.7 375dc00a",
+  "osm3s": {
+    "timestamp_osm_base": "2026-05-21T08:41:49Z",
+    "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+  },
+  "elements": [
+
+{
+  "type": "node",
+  "id": 290026925,
+  "lat": 50.0882606,
+  "lon": 14.4165887,
+  "tags": {
+    "addr:city": "Praha",
+    "addr:conscriptionnumber": "52",
+    "addr:country": "CZ",
+    "addr:housenumber": "52/8",
+    "addr:place": "Staré Město",
+    "addr:postcode": "11000",
+    "addr:street": "Valentinská",
+    "addr:streetnumber": "8",
+    "addr:suburb": "Praha 1",
+    "amenity": "restaurant",
+    "brewery": "Pilsner Urquell;Kozel",
+    "contact:facebook": "uparlamentu",
+    "cuisine": "local;czech",
+    "diet:vegetarian": "no",
+    "indoor_seating": "yes",
+    "name": "U Parlamentu",
+    "opening_hours": "Mo-Su 11:00-23:00",
+    "outdoor_seating": "sidewalk",
+    "phone": "+420 721 415 747",
+    "source:addr": "cuzk:ruian",
+    "source:loc": "survey",
+    "website": "https://uparlamentu.cz/",
+    "wheelchair": "limited"
+  }
+},
+{
+  "type": "node",
+  "id": 290026926,
+  "lat": 50.0877850,
+  "lon": 14.4164882,
+  "tags": {
+    "addr:city": "Praha 1",
+    "addr:conscriptionnumber": "93",
+    "addr:housenumber": "93/10",
+    "addr:postcode": "11000",
+    "addr:street": "Veleslavínova",
+    "amenity": "restaurant",
+    "brewery": "Pilsner Urquell;Kozel",
+    "check_date:opening_hours": "2025-11-11",
+    "cuisine": "pizza",
+    "email": "veleslavinova@pizzadonna.cz",
+    "indoor_seating": "yes",
+    "name": "Pizzeria Donna",
+    "opening_hours": "Mo-Su 11:00-23:00",
+    "outdoor_seating": "sidewalk",
+    "phone": "+420 222 321 937",
+    "website": "https://www.pizzadonna.cz/",
+    "wheelchair": "no"
+  }
+},
+{
+  "type": "node",
+  "id": 296454184,
+  "lat": 50.0890958,
+  "lon": 14.4186581,
+  "tags": {
+    "addr:conscriptionnumber": "64",
+    "addr:housenumber": "64/12",
+    "addr:postcode": "11000",
+    "addr:street": "Široká",
+    "addr:streetnumber": "12",
+    "amenity": "restaurant",
+    "indoor_seating": "yes",
+    "name": "Kafka Hummus Café",
+    "opening_hours": "Mo-Su 09:00-18:00",
+    "outdoor_seating": "yes",
+    "ref:ruian:addr": "21693382",
+    "source:addr": "cuzk:ruian"
+  }
+},
+{
+  "type": "node",
+  "id": 296466846,
+  "lat": 50.0865707,
+  "lon": 14.4229078,
+  "tags": {
+    "addr:conscriptionnumber": "543",
+    "addr:housenumber": "543/6",
+    "addr:postcode": "11000",
+    "addr:street": "Kamzíková",
+    "addr:streetnumber": "6",
+    "amenity": "restaurant",
+    "check_date": "2025-04-14",
+    "cuisine": "regional",
+    "indoor_seating": "yes",
+    "name": "U Červeného Páva",
+    "opening_hours": "We,Th 10:30-22:00; Fr 10:30-23:00; Sa 12:00-23:00; Su 12:00-21:00",
+    "outdoor_seating": "no",
+    "phone": "+420724757377",
+    "ref:ruian:addr": "21721416",
+    "source:addr": "cuzk:ruian",
+    "wheelchair": "yes"
+  }
+},
+{
+  "type": "node",
+  "id": 296526328,
+  "lat": 50.0854163,
+  "lon": 14.4273480,
+  "tags": {
+    "addr:conscriptionnumber": "857",
+    "addr:housenumber": "857/4",
+    "addr:postcode": "11000",
+    "addr:street": "Nekázanka",
+    "addr:streetnumber": "4",
+    "amenity": "restaurant",
+    "name": "Repre",
+    "name:cs": "Repre",
+    "opening_hours": "Mo-Fr 10:30-23:00; Sa 10:30-15:00",
+    "phone": "+420 222211451",
+    "source:addr": "cuzk:ruian",
+    "website": "https://repre-restaurant.cz/"
+  }
+}
+
+  ]
+}

@@ -1,0 +1,21 @@
+# Drop into your existing docker-compose.yml under `services:`.
+# Reads MCP_BEARER_TOKEN from the parent .env file.
+
+services:
+  farma-tools-mcp:
+    build: ./farma-tools-mcp
+    container_name: farma-tools-mcp
+    restart: unless-stopped
+    ports:
+      - "14000:14000"
+    environment:
+      - MCP_BEARER_TOKEN=${MCP_BEARER_TOKEN}
+      - MCP_TRANSPORT=sse
+      - PYTHONUNBUFFERED=1
+    networks:
+      - ai-net
+
+# Make sure this network exists in your compose file:
+# networks:
+#   ai-net:
+#     external: true   # or driver: bridge

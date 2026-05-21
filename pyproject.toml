@@ -1,0 +1,36 @@
+[project]
+name = "farma-tools-mcp"
+version = "0.1.0"
+description = "MCP server exposing five Czech-domain tools (ARES, ČÚZK katastr, ČÚZK chráněná území, Open-Meteo, OpenStreetMap)."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [
+    { name = "Valdemar Zavadsky", email = "valda@cloudfield.cz" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "httpx>=0.28.1",
+    "mcp[cli]>=1.27.1",
+]
+
+[project.scripts]
+farma-tools-mcp = "farma_tools_mcp:main"
+
+[build-system]
+requires = ["uv_build>=0.11.0,<0.12.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+    "pytest-asyncio>=1.3.0",
+    "respx>=0.23.1",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
