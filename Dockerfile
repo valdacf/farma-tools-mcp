@@ -16,13 +16,15 @@ WORKDIR /app
 # Cache dependencies separately from source code.
 COPY pyproject.toml uv.lock ./
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev --no-install-project
+    uv sync --frozen --no-dev --no-install-project --no-editable
 
-# Now install the project itself.
+# Now install the project itself. --no-editable so /opt/venv is self-contained
+# (otherwise uv writes a .pth file pointing at /app/src, which we don't copy
+# into the runtime stage).
 COPY src ./src
 COPY README.md ./README.md
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev
+    uv sync --frozen --no-dev --no-editable
 
 
 # ---------- Stage 2: runtime ----------
