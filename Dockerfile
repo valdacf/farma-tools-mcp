@@ -45,10 +45,10 @@ WORKDIR /app
 
 EXPOSE 14000
 
-# Healthcheck: the SSE endpoint requires auth, but the underlying TCP listen check
+# Healthcheck: the /mcp endpoint requires auth, but the underlying TCP listen check
 # is enough to know the process is up. We use python instead of curl/wget (slim image).
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD python -c "import socket,sys; s=socket.socket(); s.settimeout(3); s.connect(('127.0.0.1',14000)); s.close()" || exit 1
 
 ENTRYPOINT ["farma-tools-mcp"]
-CMD ["--transport", "sse", "--host", "0.0.0.0", "--port", "14000"]
+CMD ["--transport", "streamable-http", "--host", "0.0.0.0", "--port", "14000"]

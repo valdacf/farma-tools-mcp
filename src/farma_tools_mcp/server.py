@@ -1,7 +1,7 @@
 """FastMCP server setup — registers the 5 farma tools.
 
-The same `build_server()` is used for stdio (Claude Desktop) and HTTP/SSE
-transports (Claude.ai cowork remote MCP).
+The same `build_server()` is used for stdio (Claude Desktop) and HTTP
+transports — streamable-http (default, endpoint `/mcp`) or SSE (`/sse`).
 """
 
 from __future__ import annotations

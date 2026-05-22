@@ -22,24 +22,48 @@ Internal design notes for `farma-tools-mcp`. Pair with [README.md](../README.md)
 The CLI ([cli.py](../src/farma_tools_mcp/cli.py)) picks the transport and either:
 
 - runs the FastMCP instance over **stdio** (Claude Desktop), or
-- wraps it in a Starlette app with [`BearerAuthMiddleware`](../src/farma_tools_mcp/auth.py)
-  and serves it over **SSE** or **streamable-http** (Claude.ai cowork).
+- wraps it in a Starlette app with [`BearerAuthMiddleware`](../src/farma_tools_mcp/auth.py),
+  optionally mounts the [`OAuthShim`](../src/farma_tools_mcp/oauth.py) routes,
+  and serves it over **streamable-http** (default) or **SSE**.
 
 ## Transports
 
-| Transport         | Use case                              | Auth                    |
-| ----------------- | ------------------------------------- | ----------------------- |
-| `stdio`           | Local Claude Desktop, MCP CLI         | none (process boundary) |
-| `sse`             | Claude.ai cowork (current default)    | Bearer token, required  |
-| `streamable-http` | Newer MCP transport, forward-looking  | Bearer token, required  |
+| Transport         | Endpoint  | Use case                              | Auth                    |
+| ----------------- | --------- | ------------------------------------- | ----------------------- |
+| `stdio`           | —         | Local Claude Desktop, MCP CLI         | none (process boundary) |
+| `streamable-http` | `/mcp`    | Default — modern MCP HTTP transport   | Bearer token, required  |
+| `sse`             | `/sse`    | Fallback for older clients            | Bearer token, required  |
 
 For HTTP transports, `MCP_BEARER_TOKEN` is mandatory at startup. The process
 exits with status 2 on a missing token before any port is bound — this is the
 fail-fast behavior tested in [test_auth.py](../tests/test_auth.py).
 
-`sse` is the default today because that's what Claude.ai cowork connects to in
-production. When cowork prefers streamable-http, change the default in
-[cli.py](../src/farma_tools_mcp/cli.py).
+## OAuth shim
+
+Claude.ai cowork's UI doesn't accept a raw Bearer header — it speaks OAuth 2.1
+(Client ID / Secret in *Advanced settings*). [oauth.py](../src/farma_tools_mcp/oauth.py)
+implements the minimum surface that satisfies the cowork client:
+
+| Endpoint                                       | Behavior                                                                 |
+| ---------------------------------------------- | ------------------------------------------------------------------------ |
+| `GET /.well-known/oauth-protected-resource`    | RFC 9728 metadata — points at the authorization server (self).           |
+| `GET /.well-known/oauth-authorization-server`  | RFC 8414 metadata — declares `/authorize`, `/token`, `/register`, PKCE.  |
+| `POST /register`                               | RFC 7591 DCR — always returns the fixed `OAUTH_CLIENT_ID/SECRET`.        |
+| `GET /authorize`                               | Auto-approves; redirects back with a short-lived code (no login UI).     |
+| `POST /token`                                  | Validates `client_secret` + code (+ PKCE if used); returns `MCP_BEARER_TOKEN` as `access_token`. |
+
+The shim is **enabled only when both** `OAUTH_CLIENT_ID` and `OAUTH_CLIENT_SECRET`
+are set; otherwise the server runs raw-Bearer only. When enabled, the five OAuth
+paths are added to the Starlette app and the Bearer middleware skips them via
+`exempt_paths`.
+
+The discovery responses honor `X-Forwarded-Proto`/`X-Forwarded-Host` so that
+when running behind nginx / Cloudflare the issuer URL matches the public domain.
+
+**Trust model:** anyone who reaches `/authorize` gets a redirect with a fresh
+code, so security relies on `client_secret` at the `/token` exchange plus the
+network boundary in front of the server. Single-tenant by design — no user
+accounts, no scopes, no refresh tokens.
 
 ## Tool design
 

@@ -1,5 +1,5 @@
 # Drop into your existing docker-compose.yml under `services:`.
-# Reads MCP_BEARER_TOKEN from the parent .env file.
+# Reads MCP_BEARER_TOKEN (and optional OAUTH_CLIENT_ID/SECRET) from the parent .env file.
 
 services:
   farma-tools-mcp:
@@ -10,7 +10,10 @@ services:
       - "14000:14000"
     environment:
       - MCP_BEARER_TOKEN=${MCP_BEARER_TOKEN}
-      - MCP_TRANSPORT=sse
+      - MCP_TRANSPORT=streamable-http
+      # Optional: enable OAuth shim for Claude.ai cowork (needs both vars).
+      # - OAUTH_CLIENT_ID=${OAUTH_CLIENT_ID}
+      # - OAUTH_CLIENT_SECRET=${OAUTH_CLIENT_SECRET}
       - PYTHONUNBUFFERED=1
     networks:
       - ai-net

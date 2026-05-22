@@ -10,6 +10,7 @@ import sys
 import uvicorn
 
 from .auth import BearerAuthMiddleware
+from .oauth import OAuthShim
 from .server import build_server
 
 
@@ -26,8 +27,8 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--transport",
         choices=("stdio", "sse", "streamable-http"),
-        default=os.environ.get("MCP_TRANSPORT", "sse"),
-        help="Transport. 'stdio' for local Claude Desktop, 'sse' or 'streamable-http' for remote MCP (default: sse).",
+        default=os.environ.get("MCP_TRANSPORT", "streamable-http"),
+        help="Transport. 'stdio' for local Claude Desktop, 'streamable-http' (default) or 'sse' for remote MCP.",
     )
     parser.add_argument(
         "--host",
@@ -66,12 +67,27 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 2
 
+    oauth_id = os.environ.get("OAUTH_CLIENT_ID", "").strip()
+    oauth_secret = os.environ.get("OAUTH_CLIENT_SECRET", "").strip()
+    if bool(oauth_id) != bool(oauth_secret):
+        sys.stderr.write(
+            "FATAL: OAUTH_CLIENT_ID and OAUTH_CLIENT_SECRET must be set together (or both unset).\n"
+        )
+        return 2
+
     if args.transport == "sse":
         app = mcp.sse_app()
     else:  # streamable-http
         app = mcp.streamable_http_app()
 
-    app.add_middleware(BearerAuthMiddleware, expected_token=token)
+    exempt_paths: set[str] = set()
+    if oauth_id and oauth_secret:
+        shim = OAuthShim(client_id=oauth_id, client_secret=oauth_secret, access_token=token)
+        for route in shim.routes():
+            app.router.routes.append(route)
+        exempt_paths = shim.paths()
+
+    app.add_middleware(BearerAuthMiddleware, expected_token=token, exempt_paths=exempt_paths)
 
     uvicorn.run(app, host=args.host, port=args.port, log_level=args.log_level.lower())
     return 0

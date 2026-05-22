@@ -13,6 +13,12 @@ Claude.ai cowork. For local stdio (Claude Desktop) follow the
   ```bash
   openssl rand -hex 32
   ```
+- For Claude.ai cowork, also an OAuth client_id / client_secret pair (since
+  cowork's UI requires OAuth, not raw Bearer):
+  ```bash
+  openssl rand -hex 16   # OAUTH_CLIENT_ID
+  openssl rand -hex 32   # OAUTH_CLIENT_SECRET
+  ```
 
 ## 1. Build the image
 
@@ -21,8 +27,9 @@ cd /path/to/farma-tools-mcp
 docker build -t farma-tools-mcp:latest .
 ```
 
-Multi-stage `python:3.12-slim`, runs as non-root `uid 10001`, has a HEALTHCHECK
-on `/sse`, exposes `14000`.
+Multi-stage `python:3.12-slim`, runs as non-root `uid 10001`, exposes `14000`,
+HEALTHCHECK probes the TCP listener (the auth-protected `/mcp` endpoint can't
+be probed without a token).
 
 ## 2. Run standalone (smoke test)
 
@@ -33,12 +40,26 @@ docker run --rm -p 14000:14000 \
   farma-tools-mcp:latest
 
 # In another shell:
-curl -i http://localhost:14000/sse                                         # 401
-curl -i -N -H "Authorization: Bearer $MCP_BEARER_TOKEN" \
-  http://localhost:14000/sse                                               # SSE stream
+curl -i http://localhost:14000/mcp                                         # 401
+curl -i -H "Authorization: Bearer $MCP_BEARER_TOKEN" \
+  http://localhost:14000/mcp                                               # MCP responds
 ```
 
-A 401 without the header and an SSE stream with it = server is healthy.
+A 401 without the header and a non-401 response with it = server is healthy.
+
+To also enable the OAuth shim for cowork:
+
+```bash
+export OAUTH_CLIENT_ID=$(openssl rand -hex 16)
+export OAUTH_CLIENT_SECRET=$(openssl rand -hex 32)
+
+docker run --rm -p 14000:14000 \
+  -e MCP_BEARER_TOKEN -e OAUTH_CLIENT_ID -e OAUTH_CLIENT_SECRET \
+  farma-tools-mcp:latest
+
+# Discovery endpoint should not require auth:
+curl -s http://localhost:14000/.well-known/oauth-authorization-server | jq .
+```
 
 ## 3. Merge into an existing compose stack
 
@@ -48,26 +69,32 @@ under `services:`.
 
 ```bash
 # In the directory holding your live docker-compose.yml:
-echo "MCP_BEARER_TOKEN=$(openssl rand -hex 32)" >> .env
+{
+  echo "MCP_BEARER_TOKEN=$(openssl rand -hex 32)"
+  echo "OAUTH_CLIENT_ID=$(openssl rand -hex 16)"
+  echo "OAUTH_CLIENT_SECRET=$(openssl rand -hex 32)"
+} >> .env
 docker compose up -d farma-tools-mcp
 docker compose logs -f farma-tools-mcp
 ```
 
 Rename the `ai-net` network in the snippet if your stack uses a different
-shared network.
+shared network. Uncomment the `OAUTH_*` lines in the snippet only after
+populating `.env`.
 
 ## 4. Expose via the reverse proxy
 
 Claude.ai cowork needs a public HTTPS URL. Add a vhost that proxies to
 `http://farma-tools-mcp:14000` (compose-internal) or `http://<host>:14000`
-(standalone).
+(standalone). The Streamable HTTP transport streams responses, so disable
+proxy buffering — same as for SSE.
 
 ### Caddy example
 
 ```caddyfile
 farma-tools.example.com {
     reverse_proxy farma-tools-mcp:14000 {
-        # SSE needs streaming; disable buffering / flush regularly
+        # MCP streamable-http streams chunks; disable buffering
         flush_interval -1
     }
 }
@@ -85,45 +112,66 @@ server {
     location / {
         proxy_pass http://127.0.0.1:14000;
         proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
         proxy_set_header Connection "";
-        proxy_buffering off;       # critical for SSE
+        proxy_buffering off;       # critical for streaming responses
         proxy_read_timeout 1h;
         chunked_transfer_encoding off;
     }
 }
 ```
 
-**SSE-specific note:** any buffering / response cache in front of the server
-will break the long-lived event stream. Disable it on the `/sse` path.
+The `X-Forwarded-Proto` / `X-Forwarded-Host` headers are needed so that the
+OAuth discovery documents advertise the public HTTPS URL rather than the
+internal `http://farma-tools-mcp:14000`.
+
+**Streaming note:** any buffering / response cache in front of the server
+breaks long-lived streams. Disable it on `/mcp` (and `/sse` if you're using
+the SSE transport).
 
 ## 5. Connect Claude.ai cowork
 
 In cowork: *Settings → Integrations → Add MCP server*
 
-| Field   | Value                                                  |
-| ------- | ------------------------------------------------------ |
-| Name    | `farma-tools`                                          |
-| URL     | `https://farma-tools.example.com/sse`                  |
-| Auth    | Bearer — paste the value of `MCP_BEARER_TOKEN`         |
+| Field                              | Value                                                  |
+| ---------------------------------- | ------------------------------------------------------ |
+| Name                               | `farma-tools`                                          |
+| URL                                | `https://farma-tools.example.com/mcp`                  |
+| Client ID *(Advanced settings)*    | value of `OAUTH_CLIENT_ID`                             |
+| Client Secret *(Advanced settings)*| value of `OAUTH_CLIENT_SECRET`                         |
+
+Cowork's UI doesn't have a raw-Bearer field — the OAuth shim is the path. On
+save, cowork will:
+
+1. fetch `/.well-known/oauth-protected-resource` and `/.well-known/oauth-authorization-server`,
+2. redirect through `/authorize` (auto-approved),
+3. exchange the code at `/token` using your client_id/secret,
+4. use the returned bearer token on every subsequent `/mcp` call.
 
 After saving, cowork should list the 5 tools (`ares_lookup`, `cuzk_parcela`,
 `cuzk_areas`, `open_meteo`, `osm_nearby`). If listing fails:
 
-1. Check the URL ends in `/sse` (this is the SSE transport endpoint).
-2. Verify the token has no trailing whitespace — paste from `cat .env`, not
-   from a browser tab.
-3. Check the proxy is not buffering — `curl -i -N` from outside should keep
-   the connection open and write events as they arrive.
+1. Check the URL ends in `/mcp` (the streamable-http transport endpoint).
+2. Verify Client ID / Secret in Advanced settings have no trailing whitespace
+   — paste from `cat .env`, not from a browser tab.
+3. Confirm the proxy forwards `X-Forwarded-Proto`/`Host` so discovery returns
+   the HTTPS URL.
+4. `docker compose logs -f farma-tools-mcp` should show `oauth_token_bad_creds`
+   if the secrets don't match — that points at the cowork-side fields.
 
-## Rotating the token
+## Rotating tokens
 
 ```bash
 # On the host:
 sed -i "s/^MCP_BEARER_TOKEN=.*/MCP_BEARER_TOKEN=$(openssl rand -hex 32)/" .env
+sed -i "s/^OAUTH_CLIENT_SECRET=.*/OAUTH_CLIENT_SECRET=$(openssl rand -hex 32)/" .env
 docker compose up -d farma-tools-mcp     # picks up the new env
 ```
 
-Then paste the new token into cowork. Old token returns `401` immediately.
+Then re-paste the new Client Secret into cowork's Advanced settings (cowork
+will renegotiate the flow). Old tokens are rejected on the next request.
 
 ## Upgrading
 
@@ -151,5 +199,6 @@ docker compose down farma-tools-mcp
 docker image rm farma-tools-mcp:latest
 ```
 
-Remove `MCP_BEARER_TOKEN` from `.env` when the integration is no longer used —
-the token is the only credential.
+Remove `MCP_BEARER_TOKEN`, `OAUTH_CLIENT_ID`, and `OAUTH_CLIENT_SECRET` from
+`.env` when the integration is no longer used — these three are the only
+credentials.

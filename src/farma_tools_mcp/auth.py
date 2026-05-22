@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import secrets
+from collections.abc import Iterable
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
@@ -15,13 +16,21 @@ logger = logging.getLogger("farma_tools_mcp.auth")
 
 
 class BearerAuthMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app: ASGIApp, expected_token: str) -> None:
+    def __init__(
+        self,
+        app: ASGIApp,
+        expected_token: str,
+        exempt_paths: Iterable[str] | None = None,
+    ) -> None:
         super().__init__(app)
         if not expected_token:
             raise ValueError("BearerAuthMiddleware requires a non-empty expected_token")
         self._expected_token = expected_token
+        self._exempt_paths = frozenset(exempt_paths or ())
 
     async def dispatch(self, request: Request, call_next):
+        if request.url.path in self._exempt_paths:
+            return await call_next(request)
         header = request.headers.get("authorization", "")
         scheme, _, presented = header.partition(" ")
         if scheme.lower() != "bearer" or not secrets.compare_digest(presented, self._expected_token):
